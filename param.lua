@@ -5,7 +5,7 @@ boxsize = 100.0
 random_seed= 100
 nrealization= 1   -- multiple realisations for random_seed, random_seed+1, ...
 
-ntimestep= {10, 10, 5}
+ntimestep= 15
 a_final= 1.0
 output_redshifts= {1.0, 0.6069, 0.0}  -- redshifts of output
 

@@ -295,7 +295,21 @@ int read_parameter_file(const char filename[], Parameters* const param)
     msg_printf(verbose, "write_longid= %d\n", param->write_longid);
   }
 
-
+  // Determine omega_l based on omega_k and omega_m, consistent with read_param.c
+  if (param->omega_k >= 0.)
+  {
+    param->omega_l = 1.0 - param->omega_k - param->omega_m;
+    printf("Set omega_l as 1-omega_m-omega_k.\n");
+  }
+  else if (param->omega_l >= 0.0)
+  {
+    // omega_l already set explicitly, do nothing
+  }
+  else
+  {
+    param->omega_l = 1.0 - param->omega_m;
+    printf("Set omega_l as 1-omega_m.\n");
+  }
 
   lua_close(L);
 
