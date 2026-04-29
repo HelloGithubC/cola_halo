@@ -1,9 +1,6 @@
-
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
-#include "particle.h"
-#include "parameters.h"
 #include "solve_growth.h"
 #include "msg.h"
 
@@ -20,7 +17,7 @@ int solvegrowth_flag=0;
 
 #define GB_NUM_INTPL  3000
 double const gb_basenumber = 1. + 1./512.;
-double const gb_logbasenumber = log(1. + 1./512.);
+double const gb_logbasenumber = 0.0019512201312617493;
 //#define GB_NUM_INTPL  6000
 //double const gb_basenumber = 1. + 1./1024.;
 //double const gb_logbasenumber = log(1. + 1./1024.);
