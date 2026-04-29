@@ -62,8 +62,12 @@ endif
 cola_halo: $(OBJS)
 	$(CC) $(OBJS) $(LIBS) -o $@
 
+# Create output directory if it doesn't exist
+$(OUTDIR):
+	mkdir -p $(OUTDIR)
+
 # Pattern rule for compiling .c to .o
-$(OUTDIR)/%.o: $(SRCDIR)/%.c
+$(OUTDIR)/%.o: $(SRCDIR)/%.c | $(OUTDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Special rule for move_min.c and move_min.h generation
@@ -104,6 +108,9 @@ OBJS2 += $(OUTDIR)/subsample.o $(OUTDIR)/coarse_grid.o
 
 halo: $(OBJS2)
 	$(CC) $(OBJS2) $(LIBS) -o $@
+
+# Ensure output directory exists for halo target as well
+$(OBJS2): | $(OUTDIR)
 
 .PHONY: clean run dependence
 
