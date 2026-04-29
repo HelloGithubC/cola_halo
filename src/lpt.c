@@ -6,6 +6,13 @@
 //
 // link with -lfftw3f_mpi -lfftw3f -lm for single precision FFTW3
 //
+// xiaoliang: CORRECT_CIC - Enable deconvolution of CIC interpolation smoothing effect
+//            Set to 0 to not correct for the sinc^2 suppression in Fourier space
+//            Default: 1 (enable)
+//
+#ifndef CORRECT_CIC
+#define CORRECT_CIC 1
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -458,6 +465,7 @@ int lpt_set_displacement(const double InitTime, const double omega_m, const int 
 	double kmag2= kvec[0] * kvec[0] + kvec[1] * kvec[1] + kvec[2] * kvec[2];
 #ifdef CORRECT_CIC
 	// calculate smooth factor for deconvolution of CIC interpolation
+	double fx, fy, fz, ff, smth;
 	fx = fy = fz = 1;
 	if(kvec[0] != 0) {
 	  fx = (kvec[0] * Box / 2) / Nmesh;
