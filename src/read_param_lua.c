@@ -53,12 +53,17 @@ int read_parameters(const int argc, char * argv[],
   return 0;
 }
 
-static int read_int(lua_State* L, const char name[])
+static int read_int(lua_State* L, const char name[], bool required, int default_val)
 {
   lua_getglobal(L, name);
   if(!lua_isnumber(L, -1)) {
-    msg_abort(1010, "Error: Parameter %s not found in the parameter file\n",
-	      name);
+    if (!required) {
+      return default_val;
+    }
+    else {
+      msg_abort(1010, "Error: Parameter %s not found in the parameter file\n",
+                name);
+    }
   }
 
   int n = lua_tointeger(L, -1);
@@ -190,29 +195,28 @@ int read_parameter_file(const char filename[], Parameters* const param)
     return -1;
   }
 
-  param->nc= read_int(L, "nc");
+  param->nc= read_int(L, "nc", true, 0);
   param->boxsize= read_double(L, "boxsize", true, 0.0);
 
   param->a_init = read_double(L, "a_init", false, 0.1);
   param->a_final= read_double(L, "a_final", true, 0.0);
-  param->ntimestep= read_int(L, "ntimestep");
+  param->ntimestep= read_int(L, "ntimestep", true, 0);
   param->zout= read_array_double(L, "output_redshifts", &param->n_zout);
 
-  param->random_seed= read_int(L, "random_seed");
-  param->nrealization= read_int(L, "nrealization");
+  param->random_seed= read_int(L, "random_seed", true, 1);
+  param->nrealization= read_int(L, "nrealization", true, 1);
 
   param->omega_m= read_double(L, "omega_m", true, 0.0);
   param->h= read_double(L, "h", true, 0.0);
   param->sigma8= read_double(L, "sigma8", true, 0.0);
 
-  param->pm_nc_factor= read_int(L, "pm_nc_factor");
+  param->pm_nc_factor= read_int(L, "pm_nc_factor", true, 3);
   param->np_alloc_factor= read_double(L, "np_alloc_factor", true, 0.0);
-  param->loglevel= read_int(L, "loglevel");
+  param->loglevel= read_int(L, "loglevel", true, 0);
 
   // Some parameters xiaodong added
   param->omega_l = read_double(L, "omega_l", false, 1.0 - param->omega_m);
   param->omega_k = read_double(L, "omega_k", false, 0.0);
-  param->de_w = read_double(L, "de_w", false, -1.0);
 
   // File Names and optional parameters realated
   param->power_spectrum_filename=
@@ -234,6 +238,31 @@ int read_parameter_file(const char filename[], Parameters* const param)
 
   param->use_solve_growth = read_bool(L, "use_solve_growth", false);
 
+  // Optional parameters added by xiaodong
+  param->only_output_1eighth = read_int(L, "only_output_1eighth", false, 0);
+  param->lightcone_zmax = read_double(L, "lightcone_zmax", false, 0.0);
+  param->lightcone_basename = read_string2(L, "lightcone_basename",
+                                           &param->strlen_lightcone_basename, false);
+  // Set default if lightcone_basename is not provided
+  if (!param->lightcone_basename) {
+    const char* default_basename = "default.lightcone";
+    param->strlen_lightcone_basename = strlen(default_basename) + 1;
+    param->lightcone_basename = malloc(sizeof(char) * param->strlen_lightcone_basename);
+    assert(param->lightcone_basename);
+    strcpy(param->lightcone_basename, default_basename);
+  }
+
+  // Handle de_w with special de_w_add10 parameter (de_w = de_w_add10 - 10)
+  lua_getglobal(L, "de_w_add10");
+  if (lua_isnumber(L, -1)) {
+    param->de_w = lua_tonumber(L, -1) - 10.0;
+    lua_pop(L, 1);
+  } else {
+    lua_pop(L, 1);
+    // de_w_add10 not found, try direct de_w
+    param->de_w = read_double(L, "de_w", false, -1.0);
+  }
+
   param->snapshot_filename=
     read_string2(L, "snapshot", &param->strlen_snapshot_filename, false);
   
@@ -252,7 +281,7 @@ int read_parameter_file(const char filename[], Parameters* const param)
     read_string2(L, "coarse_grid", &param->strlen_cgrid_filename, false);
 
   if(param->cgrid_filename) {
-    param->cgrid_nc= read_int(L, "coarse_grid_nc");
+    param->cgrid_nc= read_int(L, "coarse_grid_nc", true, 0);
     msg_printf(verbose, "coarse_grid_nc read: %d\n", param->cgrid_nc);
   }
   else
