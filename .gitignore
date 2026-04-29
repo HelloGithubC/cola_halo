@@ -11,6 +11,7 @@ cola_halo
 .codebuddy/
 .idea/
 .vscode/
+.cache/
 *.swp
 *.swo
 *~
@@ -22,3 +23,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.log
+
+# developing files
+developing/
