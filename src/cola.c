@@ -179,6 +179,15 @@ void cola_drift(Particles* const particles, const float Omega_m,
 
 float growthDtemp(const float a){
     // Decided to use the analytic expression for LCDM. More transparent if I change this to numerical integration?
+    /*
+    * Compute the unnormalized linear growth factor D+(a) for LCDM.
+    * The implementation uses piecewise analytic continuations and
+    * series expansions of hypergeometric functions for numerical stability:
+    *   1. Taylor expansion near x = 1
+    *   2. Direct 2F1 evaluation for moderate x
+    *   3. Transformed 2F1 representation for large x
+    *   4. Small-1/x asymptotic expansion
+    */
     float x=-Om/(Om - 1.0)/(a*a*a);
     
     
