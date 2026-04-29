@@ -75,7 +75,7 @@ void allocate_shared_memory(const int nc, const int nc_factor, const double np_a
   // Memory for PM (nc_factor^3 * np_local each)
   const int Ngrid= nc_factor*nc;
   ptrdiff_t local_ny, local_y_start;
-  ptrdiff_t size_pm_one= 
+  ptrdiff_t size_pm_one=
     fftwf_mpi_local_size_3d_transposed(Ngrid, Ngrid, Ngrid/2+1, MPI_COMM_WORLD,
 	                 &local_nx, &local_x_start, &local_ny, &local_y_start);
   ptrdiff_t ncomplex_pm= size_pm_one;
@@ -99,7 +99,6 @@ void allocate_shared_memory(const int nc, const int nc_factor, const double np_a
     ncomplex1= size_fof/sizeof(fftwf_complex) + 1;
     size1= size_fof;
   }
-
 
   mem->mem1= fftwf_alloc_complex(ncomplex1);
   mem->size1= sizeof(fftwf_complex)*ncomplex1;
@@ -132,8 +131,8 @@ void allocate_shared_memory(const int nc, const int nc_factor, const double np_a
     msg_abort(0060, "Error: Unable to allocate %d + %d Mbytes for mem1&2.\n",
 	      (int)(mem->size1/(1024*1024)), (int)(mem->size2/(1024*1024)));
 
-  msg_printf(info, "%d Mbytes allocated for mem1.\n", 
+  msg_printf(info, "%d Mbytes allocated for mem1.\n",
 	     (int)(mem->size1/(1024*1024)));
-  msg_printf(info, "%d Mbytes allocated for mem2.\n", 
+  msg_printf(info, "%d Mbytes allocated for mem2.\n",
 	     (int)(mem->size2/(1024*1024)));
 }

@@ -44,17 +44,31 @@ void power_init(const char filename[], const double a_init, const double sigma8,
 
   if(myrank == 0) {
     read_power_table_camb(filename);
+    if(PowerTable == NULL) {
+      msg_abort(3002, "Failed to allocate PowerTable on rank 0");
+    }
     Norm= normalize_power(a_init, sigma8);
   }
 
   msg_printf(normal, "Powerspecectrum file: %s\n", filename);
 
   MPI_Bcast(&NPowerTable, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  if(myrank != 0)
+
+  if(NPowerTable <= 0) {
+    msg_abort(3003, "Invalid NPowerTable=%d", NPowerTable);
+  }
+
+  if(myrank != 0) {
     PowerTable = malloc(NPowerTable * sizeof(struct pow_table));
+    if(PowerTable == NULL) {
+      msg_abort(3004, "Failed to allocate PowerTable on rank %d (size=%zu)", 
+                myrank, NPowerTable * sizeof(struct pow_table));
+    }
+  }
 
   MPI_Bcast(PowerTable, NPowerTable*sizeof(struct pow_table), MPI_BYTE, 0,
 	    MPI_COMM_WORLD);
+
   MPI_Bcast(&Norm, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 }
@@ -69,8 +83,25 @@ void read_power_table_camb(const char filename[])
   if(!fp)
     msg_abort(3000, "Error: unable to read input power spectrum: %s",
 	      filename);
-  // read in the first line # k P(k) // xiaodong
-  char first_line[1000]; fgets(first_line, 1000,fp);
+
+  // Read the first line to check if it's a comment (starts with '#')
+  char first_line[1000];
+  if (fgets(first_line, 1000, fp) == NULL) {
+    msg_abort(3001, "Error: empty power spectrum file: %s", filename);
+  }
+
+  // Check if the first line is a comment (starts with '#')
+  int has_comment = (first_line[0] == '#');
+
+  // If the first line is not a comment, put it back for fscanf to read
+  if (!has_comment) {
+    ungetc(first_line[0], fp);  // Push back the first character
+    // We need to push back the entire line, but ungetc only pushes back one char at a time
+    // Instead, we'll use fseek to go back to the beginning
+    fseek(fp, 0, SEEK_SET);
+  }
+
+  // Count the number of data pairs
   NPowerTable = 0;
   do {
     if(fscanf(fp, "%lg %lg ", &k, &p) == 2)
@@ -79,13 +110,24 @@ void read_power_table_camb(const char filename[])
       break;
   } while(1);
 
-  msg_printf(verbose, 
+  msg_printf(verbose,
 	     "Found %d pairs of values in input spectrum table\n", NPowerTable);
 
-  PowerTable = malloc(NPowerTable * sizeof(struct pow_table));
+  if(NPowerTable <= 0) {
+    msg_abort(3006, "No valid data pairs found in power spectrum file: %s", filename);
+  }
 
+  PowerTable = malloc(NPowerTable * sizeof(struct pow_table));
+  if(PowerTable == NULL) {
+    msg_abort(3005, "Failed to allocate PowerTable for %d entries (size=%zu)",
+              NPowerTable, NPowerTable * sizeof(struct pow_table));
+  }
+
+  // Rewind and skip comment line if present
   rewind(fp);
-  fgets(first_line, 1000,fp); // xiaodong
+  if (has_comment) {
+    fgets(first_line, 1000, fp);  // Skip the comment line
+  }
 
   int n = 0;
   do {

@@ -34,8 +34,6 @@ int compare_slice(void const * const a, void const * const b)
 
 void comm_init(const int nc_pm, const int nc_p, const float boxsize)
 {
-  msg_printf(verbose, "comm initialization. nc_pm = %d^3. \n", nc_pm);
-
   MPI_Comm_rank(MPI_COMM_WORLD, &ThisNode);
   MPI_Comm_size(MPI_COMM_WORLD, &NNode);
 
@@ -47,9 +45,9 @@ void comm_init(const int nc_pm, const int nc_p, const float boxsize)
   fftwf_mpi_local_size_3d(nc_p, nc_p, nc_p/2+1, MPI_COMM_WORLD,
 			  &local_nx, &local_x_start);
 
-  MPI_Allgather(&local_nx, 1, MPI_INT, local_nx_table, 1, MPI_INT, 
+  MPI_Allgather(&local_nx, 1, MPI_INT, local_nx_table, 1, MPI_INT,
 		MPI_COMM_WORLD);
-  MPI_Allgather(&local_x_start, 1, MPI_INT, local_x_table, 1, MPI_INT, 
+  MPI_Allgather(&local_x_start, 1, MPI_INT, local_x_table, 1, MPI_INT,
 		MPI_COMM_WORLD);
 
   msg_printf(info, "%d MPI nodes\n", NNode);
@@ -70,13 +68,13 @@ void comm_init(const int nc_pm, const int nc_p, const float boxsize)
   Local_x_start= local_x_start;
 
 
-  MPI_Allgather(&Local_nx, 1, MPI_INT, local_nx_table, 1, MPI_INT, 
+  MPI_Allgather(&Local_nx, 1, MPI_INT, local_nx_table, 1, MPI_INT,
 		MPI_COMM_WORLD);
-  MPI_Allgather(&Local_x_start, 1, MPI_INT, local_x_table, 1, MPI_INT, 
+  MPI_Allgather(&Local_x_start, 1, MPI_INT, local_x_table, 1, MPI_INT,
 		MPI_COMM_WORLD);
 
   for(int i=0; i<NNode; i++)
-    msg_printf(debug, "Task=%d x=%d..%d\n", i, local_x_table[i],
+    msg_printf(debug, "PM Task=%d x=%d..%d\n", i, local_x_table[i],
                       local_x_table[i]+local_nx_table[i]-1);
 
   for(int i=0; i<NNode; i++) {
@@ -85,8 +83,15 @@ void comm_init(const int nc_pm, const int nc_p, const float boxsize)
     if((Local_x_start + Local_nx) % Ngrid == local_x_table[i])
       RightNode= i;
   }
-  msg_printf(debug, "Node %d LeftNode= %d, RightNode= %d\n", 
-	     ThisNode, LeftNode, RightNode);
+  if(LeftNode < 0 || RightNode < 0) {
+    msg_printf(normal, "[ERROR] Failed to find neighbor nodes! ThisNode=%d, NNode=%d, Ngrid=%d\n",
+               ThisNode, NNode, Ngrid);
+    msg_printf(normal, "[ERROR] Local_x_start=%d, Local_nx=%d\n", Local_x_start, Local_nx);
+    for(int i=0; i<NNode; i++) {
+      msg_printf(normal, "[ERROR] Task %d: x_start=%d, nx=%d\n",
+                 i, local_x_table[i], local_nx_table[i]);
+    }
+  }
   assert(LeftNode >= 0 && RightNode >= 0);
   
   Node[ToRight]= RightNode;

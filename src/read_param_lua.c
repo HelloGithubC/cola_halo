@@ -47,6 +47,7 @@ int read_parameters(const int argc, char * argv[],
   bcast_string(&param->subsample_filename,  &param->strlen_subsample_filename);
   bcast_string(&param->cgrid_filename,      &param->strlen_cgrid_filename);
   bcast_string(&param->init_filename,       &param->strlen_init_filename);
+  bcast_string(&param->lightcone_basename,  &param->strlen_lightcone_basename);
 
   bcast_array_double(&param->zout,          &param->n_zout);
 

@@ -181,15 +181,15 @@ int main(int argc, char* argv[])
 
 
   // xiaodong variables begin
-    int myrank; // xiaodong
-    MPI_Comm_rank(MPI_COMM_WORLD, &myrank); // xiaodong
+    int myrank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-    struct chain_1000 * head_precheck=NULL, * p_precheck=NULL, *head_nowcheck=NULL, * p_nowcheck=NULL;  
-    int is_first_lightcone_shell = 1, do_check_cross=1; 
+    struct chain_1000 * head_precheck=NULL, * p_precheck=NULL, *head_nowcheck=NULL, * p_nowcheck=NULL;
+    int is_first_lightcone_shell = 1, do_check_cross=1;
     float a1,a2,a3,amid, z1,z2,z3,zmid, r1,r2,rmid, r_upbound, r_lowbound, r_nextstep_lowbound;
-    float max_possible_v = 1500., max_travel_distance; // 粒子的极限移动速度，用于 cross-bounday 的检查
+    float max_possible_v = 1500., max_travel_distance;
     long long n_check_cross_skip_total =0, n_check_cross_output_total =0;
-    long long n_write_total = 0; 
+    long long n_write_total = 0;
 
     char check_cross_filename[6000]; sprintf(check_cross_filename,"%s_check_cross_test_myrank%d.txt",param.lightcone_basename,myrank);
     FILE * fp_check_cross_test=NULL;
@@ -197,23 +197,23 @@ int main(int argc, char* argv[])
     {
         if(myrank==0) fp_check_cross_test = fopen(check_cross_filename, "w");
     }
-  // xiaodong variables end 
+  // xiaodong variables end
 
 
   
   //power_init("camb0_matterpower.dat", a_init, sigma8, OmegaM, OmegaLambda);
-  power_init(param.power_spectrum_filename, a_init, 
+  power_init(param.power_spectrum_filename, a_init,
 	     sigma8, OmegaM, OmegaLambda);
 
 
-  Memory mem; 
-  allocate_shared_memory(param.nc, nc_factor, param.np_alloc_factor, &mem); 
+  Memory mem;
+  allocate_shared_memory(param.nc, nc_factor, param.np_alloc_factor, &mem);
   lpt_init(param.nc, mem.mem1, mem.size1);
   const int local_nx= lpt_get_local_nx();
 
-  Particles* particles= 
+  Particles* particles=
      allocate_particles(param.nc, local_nx, param.np_alloc_factor);
-  Snapshot* snapshot= allocate_snapshot(param.nc, local_nx, 
+  Snapshot* snapshot= allocate_snapshot(param.nc, local_nx,
 				  particles->np_allocated, mem.mem2, mem.size2);
   snapshot->boxsize= param.boxsize;
   snapshot->omega_m= OmegaM;
