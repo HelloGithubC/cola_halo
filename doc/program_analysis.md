@@ -815,7 +815,563 @@ timer_start(comm);      // MPI通信
 - [x] PM方法内存分配分析
 - [x] **2LPT位移计算方法** ✓
 - [x] **PM力计算算法** ✓
+- [x] **COLA积分方案** ✓
 - [ ] 各模块内部函数实现细节
-- [ ] COLA积分方案
+- [ ] FOF晕寻找算法
+- [ ] 光锥输出逻辑细节
+
+---
+
+## COLA模块深度分析 (cola.c)
+
+### 模块概述
+
+`cola.c` 实现了**COLA(COmoving Lagrangian Acceleration)方法的时间积分**,这是整个模拟的核心动力学演化模块。COLA方法通过结合LPT(拉格朗日扰动理论)的长程引力和PM(粒子网格)方法的短程残余引力,在粗网格上实现高效的N体模拟。
+
+**代码来源**: 基于Svetlin Tassev的原始COLA代码 (Harvard/Princeton),采用GNU GPL v3许可
+
+### 核心思想
+
+COLA方法的基本公式:
+
+```
+x(a) = x_LPT(a) + x_residual(a)
+
+其中:
+- x_LPT(a) = q + D⁺(a)×ψ⁽¹⁾(q) + D₂(a)×ψ⁽²⁾(q)  // LPT预测轨迹
+- x_residual(a): PM方法计算的残余位移
+```
+
+**关键优势**:
+- LPT在长波极限下精确,可在大步长下使用
+- PM只计算短程残余力,可在粗网格上运行
+- 总体计算量大幅减少,同时保持小尺度精度
+
+### 核心数据结构
+
+```c
+// 全局参数
+static float Om = -1.0f;                    // 物质密度参数(运行时设置)
+static const float subtractLPT = 1.0f;      // LPT扣除开关(1=启用)
+static const float nLPT = -2.5f;            // LPT时间依赖指数
+static const int fullT = 1;                 // 速度增长模型选择
+
+const int gb_use_numerical_q1q2 = 1;        // 使用数值计算的q1,q2系数
+```
+
+### 主要函数功能
+
+#### 1. `cola_kick()` - 速度更新 (行77-141)
+
+**功能**: Leap-frog积分的Kick步骤,更新粒子速度
+
+**参数**:
+- `particles`: 粒子集合
+- `Omega_m`: 物质密度参数
+- `avel1`: 新的速度尺度因子 (t + 0.5*dt)
+
+**算法流程**:
+
+```c
+// 1. 设置时间参数
+AI = particles->a_v;   // 当前速度尺度因子 (t - 0.5*dt)
+A  = particles->a_x;   // 当前位置尺度因子 (t)
+AF = avel1;            // 新的速度尺度因子 (t + 0.5*dt)
+
+// 2. 计算宇宙学修正因子
+Om143 = [Ω_m(A) / (Ω_m + (1-Ω_m)×A³×A^{-3(1+w)})]^{1/143}
+
+// 3. 计算LPT系数 (两种模式)
+if (gb_use_numerical_q1q2) {
+    // 使用数值求解的增长因子
+    q1 = 1.5×Om×growthD(A)
+    q2 = 1.5×Om×growthD(A)²×(1 + 7/3×Om143)
+    // 通过gb_Tsquare_DE进行数值修正
+} else {
+    // 使用解析近似
+    q1 = 1.5×Om×growthD(A)
+    q2 = 1.5×Om×growthD(A)²×(1 + 7/3×Om143)
+}
+
+// 4. 计算时间积分因子
+dda = Sphi(AI, AF, A)  // ∫_{AI}^{AF} gpQ(a)/Q(a) da
+
+// 5. 更新每个粒子的速度
+for each particle i:
+    // 总加速度 = PM力 + LPT修正力
+    a_x = -1.5×Om×f[i][0] - subtractLPT×(P[i].dx1[0]×q1 + P[i].dx2[0]×q2)
+    a_y = -1.5×Om×f[i][1] - subtractLPT×(P[i].dx1[1]×q1 + P[i].dx2[1]×q2)
+    a_z = -1.5×Om×f[i][2] - subtractLPT×(P[i].dx1[2]×q1 + P[i].dx2[2]×q2)
+    
+    // Kick: v(t+0.5dt) = v(t-0.5dt) + a × dda
+    P[i].v[0] += a_x × dda
+    P[i].v[1] += a_y × dda
+    P[i].v[2] += a_z × dda
+
+// 6. 更新速度尺度因子
+particles->a_v = AF
+```
+
+**物理含义**:
+
+- **PM力项** (`-1.5×Om×f[i]`): 来自PM计算的残余引力
+- **LPT力项** (`-subtractLPT×(dx1×q1 + dx2×q2)`): LPT预测的长程引力
+- **符号**: `subtractLPT=1.0` 表示从总力中扣除LPT部分,只保留残余力
+
+**时间积分因子 `dda`**:
+
+```
+dda = Sphi(AI, AF, A) = [gpQ(AF) - gpQ(AI)] × A / Q(A) / DERgpQ(A)
+
+其中:
+- gpQ(a) = a^{nLPT} = a^{-2.5}  (LPT时间依赖)
+- Q(a) = a³H(a)/H₀  (无量纲Hubble参数)
+- DERgpQ(a) = nLPT × a^{nLPT-1}  (gpQ的导数)
+```
+
+这是一个**近似的时间积分**,基于LPT的时间依赖形式。
+
+#### 2. `cola_drift()` - 位置更新 (行143-177)
+
+**功能**: Leap-frog积分的Drift步骤,更新粒子位置
+
+**参数**:
+- `particles`: 粒子集合
+- `Omega_m`: 物质密度参数
+- `apos1`: 新的位置尺度因子 (t + dt)
+
+**算法流程**:
+
+```c
+// 1. 设置时间参数
+A  = particles->a_x;   // 当前位置尺度因子 (t)
+AC = particles->a_v;   // 当前速度尺度因子 (t + 0.5dt)
+AF = apos1;            // 新的位置尺度因子 (t + dt)
+
+// 2. 计算时间积分因子
+dyyy = Sq(A, AF, AC)   // ∫_{A}^{AF} gpQ(a)/Q(a) da / gpQ(AC)
+
+// 3. 计算增长因子的变化
+da1 = growthD(AF) - growthD(A)    // ΔD⁺ (一阶增长因子变化)
+da2 = growthD2(AF) - growthD2(A)  // ΔD₂ (二阶增长因子变化)
+
+// 4. 更新每个粒子的位置
+for each particle i:
+    // 位置更新 = 漂移项 + LPT修正项
+    x[0] += v[0]×dyyy + subtractLPT×(dx1[0]×da1 + dx2[0]×da2)
+    x[1] += v[1]×dyyy + subtractLPT×(dx1[1]×da1 + dx2[1]×da2)
+    x[2] += v[2]×dyyy + subtractLPT×(dx1[2]×da1 + dx2[2]×da2)
+
+// 5. 更新位置尺度因子
+particles->a_x = AF
+```
+
+**物理含义**:
+
+- **漂移项** (`v×dyyy`): 粒子由于速度的自由流动
+- **LPT修正项** (`dx1×da1 + dx2×da2`): LPT预测的位移增量
+
+**时间积分因子 `dyyy`**:
+
+```
+dyyy = Sq(A, AF, AC) = ∫_{A}^{AF} [gpQ(a)/Q(a)] da / gpQ(AC)
+
+这个积分通过GSL数值积分计算 (见下文)
+```
+
+#### 3. 增长因子函数
+
+##### `growthD(a)` - 一阶增长因子 (行220-229)
+
+**功能**: 计算线性增长因子 D⁺(a)
+
+**两种模式**:
+
+```c
+if (gb_use_solve_growth) {
+    // 使用预计算的数值解 (来自solve_growth.c)
+    intpl_D_E_Qs(1/a - 1, &Da, &Ea, &QdDda, &QdEda);
+    return Da;
+} else {
+    // 使用解析近似 (growthDtemp)
+    return growthDtemp(a) / growthDtemp(1.0);
+}
+```
+
+**`growthDtemp(a)`** (行180-218): 使用超几何函数的解析表达式
+
+```c
+// 对于ΛCDM宇宙学,增长因子可以解析表达为:
+// D⁺(a) ∝ H(a) × ∫_0^a da' / (a'×H(a'))³
+
+// 通过超几何函数 _2F_1 计算
+x = -Ω_m / [(Ω_m - 1) × a³]
+
+if (|x-1| < 0.001):
+    // 使用泰勒展开近似 (在x≈1附近)
+    hyperP = 0.8596 - 0.1017×(x-1) + 0.0258×(x-1)² - ...
+    hyperM = 1.1765 + 0.1585×(x-1) - 0.0142×(x-1)² + ...
+else if (x < 1):
+    // 使用超几何函数
+    hyperP = _2F_1(1/2, 2/3, 5/3, -x)
+    hyperM = _2F_1(-1/2, 2/3, 5/3, -x)
+else:
+    // 变量变换后的表达式
+    ...
+
+// 最终结果
+if (a > 0.2):
+    return √[1 + (a^{-3}-1)×Ω_m] × 
+           [3.449×(1/Ω_m-1)^{2/3} + (hyperP×(4a³(Ω_m-1)-Ω_m) 
+           - 7a³×hyperM×(Ω_m-1)) / (a⁵(Ω_m-1) - a²Ω_m)]
+else:
+    // 早期宇宙的级数展开
+    return (a×(1-Ω_m)^{1.5} × (...)) / (1.5625e10 × Ω_m⁵)
+```
+
+##### `growthD2(a)` - 二阶增长因子 (行247-254)
+
+**功能**: 计算二阶增长因子 D₂(a)
+
+```c
+// 近似公式: D₂(a) ∝ D⁺(a)² × Ω(a)^{-1/143}
+// 其中 Ω(a) = Ω_m / [Ω_m + (1-Ω_m)×a³×a^{-3(1+w)}]
+
+if (gb_use_solve_growth):
+    return Ea;  // 来自solve_growth.c的数值解
+else:
+    return growthD2temp(a) / growthD2temp(1.0)
+```
+
+##### `growthD2v(a)` - 二阶增长因子的速度项 (行257-268)
+
+**功能**: 计算 dD₂/dy,用于快照的速度插值
+
+```c
+// 理论关系: dD₂/dy = Q(a) × (D₂/a) × 2 × Ω(a)^{6/11}
+
+if (gb_use_solve_growth):
+    return QdEda;  // 来自solve_growth.c的数值导数
+else:
+    return Qfactor(a) × (d2/a) × 2 × Ω(a)^{6/11}
+```
+
+##### `decayD(a)` - 衰减模式 (行270-273)
+
+**功能**: 计算衰减模式 D₋(a)
+
+```c
+D₋(a) = √[Ω_m/a³ + (1-Ω_m)×a^{-3(1+w)}]
+```
+
+在标准COLA中不使用衰减模式,但定义用于完整性。
+
+#### 4. 时间积分辅助函数
+
+##### `Qfactor(a)` - 无量纲Hubble参数 (行232-235)
+
+```c
+Q(a) = a³ × H(a) / H₀
+     = √[Ω_m/a³ + (1-Ω_m)×a^{-3(1+w)}] × a³
+```
+
+其中 `w` 是暗能量状态方程参数 (通过全局变量 `gb_w` 设置)。
+
+##### `Sq(ai, af, aRef)` - 漂移时间积分 (行315-334)
+
+**功能**: 计算位置更新的时间积分因子
+
+```c
+Sq(ai, af, aRef) = ∫_{ai}^{af} [gpQ(a)/Q(a)] da / gpQ(aRef)
+
+其中:
+- gpQ(a) = a^{nLPT} = a^{-2.5}
+- Q(a) = Qfactor(a)
+
+使用GSL自适应积分计算:
+- 工作空间: 5000个点
+- 相对精度: 1e-5
+- 积分规则: Gauss-Kronrod (rule 6)
+```
+
+**为什么需要这个积分?**
+
+在COLA方法中,时间坐标变换为:
+
+```
+dy = da / [a² × H(a)]
+
+粒子的运动方程变为:
+dx/dy = v
+dv/dy = -∇Φ × [a² × H(a)]⁻¹
+
+使用LPT的时间依赖 gpQ(a) = a^{nLPT},可以将积分分解为:
+∫ dy = ∫ [gpQ(a)/Q(a)] da / gpQ(a)
+```
+
+##### `Sphi(ai, af, aRef)` - Kick时间积分 (行340-345)
+
+**功能**: 计算速度更新的时间积分因子
+
+```c
+Sphi(ai, af, aRef) = [gpQ(af) - gpQ(ai)] × aRef / Q(aRef) / DERgpQ(aRef)
+
+其中 DERgpQ(a) = nLPT × a^{nLPT-1}
+
+这是基于LPT时间依赖的近似积分。
+```
+
+##### `DprimeQ(a, nGrowth)` - 增长因子的导数 (行275-287)
+
+**功能**: 计算 Q(a) × d(D⁺^n)/da
+
+```c
+DprimeQ(a, nGrowth) = Q(a) × d[D⁺(a)^n] / da
+
+用于快照的速度插值,其中 nGrowth=1.0。
+```
+
+#### 5. 快照插值函数
+
+##### `set_noncola_initial()` - 初始快照设置 (行350-391)
+
+**功能**: 在非COLA运行中(如纯PM),从粒子数据生成快照
+
+```c
+// 1. 获取当前尺度因子
+aout = particles->a_x
+
+// 2. 计算速度因子
+vfac = 100.0 / aout  // 转换为 km/s, H₀=100 km/s/Mpc
+
+// 3. 计算速度增长因子
+Dv = DprimeQ(aout, 1.0)   // dD⁺/dy
+Dv2 = growthD2v(aout)     // dD₂/dy
+
+// 4. 对每个粒子插值速度
+for each particle:
+    v[i] = vfac × (dx1×Dv + dx2×Dv2)
+    x[i] = p[i].x
+    id[i] = p[i].id
+```
+
+**注意**: 这个函数**不使用PM力**,只使用LPT位移。适用于纯LPT运行。
+
+##### `cola_set_snapshot()` - COLA快照设置 (行394-485)
+
+**功能**: 在COLA运行中,从当前粒子状态插值到指定输出时刻的快照
+
+**为什么需要插值?**
+
+COLA的时间积分是离散的(Kick-Drift-Kick),输出时刻可能不在积分步上。需要在两个积分步之间插值。
+
+**算法流程**:
+
+```c
+// 1. 设置时间参数
+AI = particles->a_v;   // 上次Kick的时间 (t - 0.5dt)
+A  = particles->a_x;   // 上次Drift的时间 (t)
+AF = aout;             // 输出时刻 (t + δt, 0 ≤ δt ≤ dt)
+AC = particles->a_v;   // 当前速度时间 (t + 0.5dt)
+
+// 2. 计算LPT系数 (与cola_kick相同)
+q1 = 1.5×Om×growthD(A)
+q2 = 1.5×Om×growthD(A)²×(1 + 7/3×Om143)
+// 可选: 使用数值修正
+
+// 3. 计算时间积分因子
+dda = Sphi(AI, AF, A)   // 从AI到AF的Kick积分
+dyyy = Sq(A, AF, AC)    // 从A到AF的Drift积分
+
+// 4. 计算增长因子变化
+da1 = growthD(AF) - growthD(A)
+da2 = growthD2(AF) - growthD2(A)
+
+// 5. 计算速度增长因子
+Dv = DprimeQ(aout, 1.0)
+Dv2 = growthD2v(aout)
+
+// 6. 对每个粒子进行插值
+for each particle:
+    // 计算PM加速度
+    ax = -1.5×Om×f[0] - (dx1[0]×q1 + dx2[0]×q2)
+    ay = -1.5×Om×f[1] - (dx1[1]×q1 + dx2[1]×q2)
+    az = -1.5×Om×f[2] - (dx1[2]×q1 + dx2[2]×q2)
+    
+    // 速度 = 当前速度 + Kick + LPT速度项
+    v_out[0] = vfac × [v[0] + ax×dda + (dx1[0]×Dv + dx2[0]×Dv2)]
+    v_out[1] = vfac × [v[1] + ay×dda + (dx1[1]×Dv + dx2[1]×Dv2)]
+    v_out[2] = vfac × [v[2] + az×dda + (dx1[2]×Dv + dx2[2]×Dv2)]
+    
+    // 位置 = 当前位置 + Drift + LPT位移项
+    x_out[0] = x[0] + v[0]×dyyy + (dx1[0]×da1 + dx2[0]×da2)
+    x_out[1] = x[1] + v[1]×dyyy + (dx1[1]×da1 + dx2[1]×da2)
+    x_out[2] = x[2] + v[2]×dyyy + (dx1[2]×da1 + dx2[2]×da2)
+    
+    id_out = id
+```
+
+**关键点**:
+
+- **两步插值**: 先从 (t-0.5dt) Kick到输出时刻,再从 (t) Drift到输出时刻
+- **LPT修正**: 始终加上LPT的位移和速度贡献
+- **单位转换**: 速度转换为 km/s (H₀=100 km/s/Mpc)
+
+### 关键技术特点
+
+#### 1. Leap-frog KDK (Kick-Drift-Kick) 积分
+
+COLA使用标准的Leap-frog KDK格式:
+
+```
+Kick:    v(t+0.5dt) = v(t-0.5dt) + a(t) × dda
+Drift:   x(t+dt)   = x(t) + v(t+0.5dt) × dyyy + LPT_drift
+Kick:    v(t+1.5dt) = v(t+0.5dt) + a(t+dt) × dda'
+```
+
+**优点**:
+- 辛积分器,能量守恒性好
+- 二阶精度
+- 时间可逆
+
+#### 2. LPT扣除机制
+
+COLA的核心思想是**从总力中扣除LPT预测的部分**,只计算残余力:
+
+```
+F_total = F_PM + F_LPT
+F_residual = F_total - F_LPT = F_PM
+
+其中:
+- F_PM: PM方法计算的总引力
+- F_LPT: LPT预测的长程引力 = -(dx1×q1 + dx2×q2)
+```
+
+**为什么有效?**
+
+- LPT在长波极限下精确,可以大步长积分
+- PM只计算短程残余力,可以在粗网格上运行
+- 总体计算量 ~ O(N log N),而非O(N²)
+
+#### 3. 数值 vs 解析增长因子
+
+代码提供两种模式:
+
+```c
+if (gb_use_solve_growth) {
+    // 使用solve_growth.c的数值解
+    // 优点: 精确,适用于任意宇宙学
+    // 缺点: 需要预计算
+} else {
+    // 使用growthDtemp的解析近似
+    // 优点: 无需预计算
+    // 缺点: 仅适用于ΛCDM
+}
+```
+
+类似地,`gb_use_numerical_q1q2` 控制是否使用数值计算的q1,q2系数。
+
+#### 4. 暗能量状态方程
+
+代码支持一般暗能量状态方程:
+
+```c
+// 默认: w = 0 (宇宙学常数)
+// 通过全局变量 gb_w 设置
+
+Ω(a) = Ω_m / [Ω_m + (1-Ω_m)×a³×a^{-3(1+w)}]
+
+当 w = -1: ΛCDM
+当 w = 0: 无暗能量
+当 w ≠ -1: 动力学暗能量
+```
+
+#### 5. 超几何函数计算
+
+`growthDtemp()` 使用GSL的超几何函数 `_2F_1`:
+
+```c
+// 对于ΛCDM,增长因子可以解析表达为:
+// D⁺(a) ∝ H(a) × ∫_0^a da' / (a'×H(a'))³
+//        ∝ H(a) × _2F_1(1/2, 2/3, 5/3, -x)
+
+// 代码使用分段计算:
+// - x≈1: 泰勒展开 (避免超几何函数的数值不稳定)
+// - x<1: 直接使用超几何函数
+// - x>1: 变量变换后的表达式
+// - a<0.2: 早期宇宙的级数展开
+```
+
+### 性能分析
+
+#### 计算复杂度
+
+每个时间步:
+
+| 操作 | 复杂度 | 备注 |
+|------|--------|------|
+| Kick | O(N) | 粒子循环,OpenMP并行 |
+| Drift | O(N) | 粒子循环,OpenMP并行 |
+| 增长因子计算 | O(1) | 预计算或解析 |
+| 时间积分 (Sq, Sphi) | O(1) | 预计算或解析近似 |
+
+#### 内存使用
+
+COLA模块本身内存使用很少:
+
+| 变量 | 大小 |
+|------|------|
+| 全局参数 | ~50 字节 |
+| 临时变量 | ~200 字节 |
+| **总计** | **< 1 KB** |
+
+主要内存消耗在粒子数据和力场 (由其他模块管理)。
+
+#### 计时统计
+
+从 `timer.c` 模块可以看到,COLA的时间主要用于:
+
+```
+timer_start(evolve);   // Kick + Drift
+timer_stop(evolve);
+```
+
+对于典型模拟 (N=512³, 50步):
+
+- Kick: ~10% 总时间
+- Drift: ~10% 总时间
+- PM力计算: ~80% 总时间
+
+### 与LPT和PM模块的集成
+
+#### LPT模块接口
+
+```c
+// lpt.c 提供:
+// - P[i].dx1[3]: 一阶LPT位移 (外推到a=1)
+// - P[i].dx2[3]: 二阶LPT位移 (外推到a=1)
+
+// cola.c 使用:
+// - LPT力: -(dx1×q1 + dx2×q2)
+// - LPT位移: dx1×da1 + dx2×da2
+```
+
+#### PM模块接口
+
+```c
+// pm.c 提供:
+// - particles->force[3]: 残余引力场
+
+// cola.c 使用:
+// - PM力: -1.5×Om×f[i]
+```
+
+### 待分析项目更新
+
+- [x] PM方法内存分配分析
+- [x] **2LPT位移计算方法** ✓
+- [x] **PM力计算算法** ✓
+- [x] **COLA积分方案** ✓
+- [ ] 各模块内部函数实现细节
 - [ ] FOF晕寻找算法
 - [ ] 光锥输出逻辑细节
