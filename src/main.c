@@ -169,7 +169,12 @@ int main(int argc, char* argv[])
 
 #ifndef LOGTIMESTEP
   const double da= a_final/nsteps;
-  const double a_init= param.a_init;
+  /* NOTE: To maintain consistency with the original COLA implementation,
+   * a_init is forced to equal da (i.e., a_init = a_final/nsteps).
+   * The user-provided a_init parameter is currently ignored to avoid
+   * time-step inconsistencies. See developing/a_init.md for details.
+   */
+  const double a_init= da;
 #else
   const double a_init= param.a_init;
 #endif
