@@ -1,0 +1,24 @@
+# Build outputs
+output/
+*.o
+cola_halo
+
+# Generated files (if any)
+# src/move_min.c
+# src/move_min.h
+
+# IDE and editor files
+.codebuddy/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
