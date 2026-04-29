@@ -1,0 +1,344 @@
+[
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/main.c",
+   "-o",
+   "output/main.o"
+  ],
+  "file": "src/main.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/lpt.c",
+   "-o",
+   "output/lpt.o"
+  ],
+  "file": "src/lpt.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/msg.c",
+   "-o",
+   "output/msg.o"
+  ],
+  "file": "src/msg.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/power.c",
+   "-o",
+   "output/power.o"
+  ],
+  "file": "src/power.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/confirm_param.c",
+   "-o",
+   "output/confirm_param.o"
+  ],
+  "file": "src/confirm_param.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/solve_growth.c",
+   "-o",
+   "output/solve_growth.o"
+  ],
+  "file": "src/solve_growth.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/pm.c",
+   "-o",
+   "output/pm.o"
+  ],
+  "file": "src/pm.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/cola.c",
+   "-o",
+   "output/cola.o"
+  ],
+  "file": "src/cola.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/fof.c",
+   "-o",
+   "output/fof.o"
+  ],
+  "file": "src/fof.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/comm.c",
+   "-o",
+   "output/comm.o"
+  ],
+  "file": "src/comm.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/move.c",
+   "-o",
+   "output/move.o"
+  ],
+  "file": "src/move.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/move_min.c",
+   "-o",
+   "output/move_min.o"
+  ],
+  "file": "src/move_min.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/write.c",
+   "-o",
+   "output/write.o"
+  ],
+  "file": "src/write.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/timer.c",
+   "-o",
+   "output/timer.o"
+  ],
+  "file": "src/timer.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/mem.c",
+   "-o",
+   "output/mem.o"
+  ],
+  "file": "src/mem.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/subsample.c",
+   "-o",
+   "output/subsample.o"
+  ],
+  "file": "src/subsample.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/coarse_grid.c",
+   "-o",
+   "output/coarse_grid.o"
+  ],
+  "file": "src/coarse_grid.c"
+ },
+ {
+  "directory": "/home/xiaoliang/software/cola_halo_omp",
+  "arguments": [
+   "mpicc",
+   "-std=c99",
+   "-O3",
+   "-Wall",
+   "-fopenmp",
+   "-Wall",
+   "-DUSE_LUA",
+   "-I/usr/include/lua5.4",
+   "-Isrc",
+   "-c",
+   "src/read_param_lua.c",
+   "-o",
+   "output/read_param_lua.o"
+  ],
+  "file": "src/read_param_lua.c"
+ }
+]
