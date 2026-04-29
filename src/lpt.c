@@ -254,14 +254,16 @@ int lpt_set_displacement(const double InitTime, const double omega_m, const int 
 	  
 #ifdef SPHEREMODE
 	  // select a sphere in k-space
-	  if(kmag * Box / (2 * M_PI) > Nsample / 2)
+	  // xiaoliang: Use floating-point division to avoid precision loss in integer division
+	  if(kmag * Box / (2 * M_PI) > Nsample / 2.0)
 	    continue;
 #else
-	  if(fabs(kvec[0]) * Box / (2 * M_PI) > Nsample / 2)
+	  // xiaoliang: Use floating-point division to avoid precision loss in integer division
+	  if(fabs(kvec[0]) * Box / (2 * M_PI) > Nsample / 2.0)
 	    continue;
-	  if(fabs(kvec[1]) * Box / (2 * M_PI) > Nsample / 2)
+	  if(fabs(kvec[1]) * Box / (2 * M_PI) > Nsample / 2.0)
 	    continue;
-	  if(fabs(kvec[2]) * Box / (2 * M_PI) > Nsample / 2)
+	  if(fabs(kvec[2]) * Box / (2 * M_PI) > Nsample / 2.0)
 	    continue;
 #endif
 		      
