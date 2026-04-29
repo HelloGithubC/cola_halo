@@ -224,7 +224,16 @@ int read_parameters(const int argc, char *argv[], Parameters *const param)
     bcast_string(&param->subsample_filename, &param->strlen_subsample_filename);
     bcast_string(&param->cgrid_filename, &param->strlen_cgrid_filename);
     bcast_string(&param->init_filename, &param->strlen_init_filename);
-    bcast_string(&param->lightcone_basename, &param->strlen_lightcone_basename);
+    if (param->use_lightcone)
+    {
+        bcast_string(&param->lightcone_basename, &param->strlen_lightcone_basename);
+    }
+    else
+    {
+        // Ensure lightcone_basename is NULL when not used
+        param->lightcone_basename = 0;
+        param->strlen_lightcone_basename = 0;
+    }
 
     bcast_array_double(&param->zout, &param->n_zout);
 
@@ -274,8 +283,10 @@ int read_parameter_file(const char filename[], Parameters *const param)
     param->subsample_factor = 0.0;
     param->cgrid_nc = 0;
     param->write_longid = 0;
+    param->use_lightcone = 0;  // default: lightcone disabled
     param->lightcone_zmax = 0.;
-    param->lightcone_basename = "default.lightcone";
+    param->lightcone_basename = 0;
+    param->strlen_lightcone_basename = 0;
 
     param->de_w = -1.;
     param->omega_l = -1.;
@@ -344,6 +355,8 @@ int read_parameter_file(const char filename[], Parameters *const param)
             param->init_filename = get_string(p, &param->strlen_init_filename);
         else if (strcmp(name, "write_longid") == 0)
             param->write_longid = get_bool(p);
+        else if (strcmp(name, "use_lightcone") == 0)
+            param->use_lightcone = get_bool(p);
         else if (strcmp(name, "lightcone_zmax") == 0)
             param->lightcone_zmax = get_double(p);
         else if (strcmp(name, "lightcone_basename") == 0)
@@ -387,6 +400,21 @@ int read_parameter_file(const char filename[], Parameters *const param)
         printf("WARNING (read_parameter_file) Will only output 1/8 of the full sky!!!\n");
         printf("WARNING (read_parameter_file) Will only output 1/8 of the full sky!!!\n");
         printf("WARNING (read_parameter_file) Will only output 1/8 of the full sky!!!\n");
+    }
+
+    // Validate lightcone parameters if use_lightcone is enabled
+    if (param->use_lightcone)
+    {
+        if (param->lightcone_zmax <= 0.0)
+        {
+            msg_abort(1009, "Error: use_lightcone=true but lightcone_zmax is not given or <= 0\n");
+        }
+        if (param->lightcone_basename == 0 || param->strlen_lightcone_basename <= 1)
+        {
+            msg_abort(1010, "Error: use_lightcone=true but lightcone_basename is not given or empty\n");
+        }
+        printf("Lightcone output enabled: lightcone_zmax = %.3f, lightcone_basename = %s\n",
+               param->lightcone_zmax, param->lightcone_basename);
     }
 
     return 0;

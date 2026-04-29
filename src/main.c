@@ -191,10 +191,11 @@ int main(int argc, char* argv[])
     long long n_check_cross_skip_total =0, n_check_cross_output_total =0;
     long long n_write_total = 0;
 
-    char check_cross_filename[6000]; sprintf(check_cross_filename,"%s_check_cross_test_myrank%d.txt",param.lightcone_basename,myrank);
+    char check_cross_filename[6000];
     FILE * fp_check_cross_test=NULL;
-    if (param.lightcone_zmax>0.0)
+    if (param.use_lightcone)
     {
+        sprintf(check_cross_filename,"%s_check_cross_test_myrank%d.txt",param.lightcone_basename,myrank);
         if(myrank==0) fp_check_cross_test = fopen(check_cross_filename, "w");
     }
   // xiaodong variables end
@@ -281,7 +282,7 @@ int main(int argc, char* argv[])
     // ----------------------------------------------------
     // xiaodong's code for lightcone output begin
     // *** beging of setting
-    if (param.lightcone_zmax>0.0)
+    if (param.use_lightcone)
     {
         // 1: set omegam
         gb_omegam = OmegaM;
@@ -389,8 +390,8 @@ int main(int argc, char* argv[])
 
 	//a1=  (istep+1. - 0.5 - 0.2 * (float)nsteps / 20.) *da; 	// allowing 20% overlap between two timesteps
 	//a2=  (istep+1. + 0.5 + 0.2 * (float)nsteps / 20. ) *da; 	// allowing 20% overlap between two timesteps
-    if (param.lightcone_zmax > 0.0){
-        a1=  (istep+1. - 0.5) * da; // - 0.2 * (float)nsteps / 20.) *da; 
+    if (param.use_lightcone){
+        a1=  (istep+1. - 0.5) * da; // - 0.2 * (float)nsteps / 20.) *da;
         a2=  (istep+1. + 0.5) * da; //+ 0.2 * (float)nsteps / 20. ) *da;
         amid = (a1+a2) / 2.; a3=  a2; //(istep+1. - 2.5 - 0.2 * (float)nsteps / 20.) *da;  // a very small a, large r: use to decide when to start output
         zmid = 1/amid - 1.; z1 = 1./a1 - 1.; z2 = 1./a2 - 1.;  z3 = 1./a3 - 1.;
@@ -404,7 +405,7 @@ int main(int argc, char* argv[])
             max_travel_distance = max_possible_v / 3.e5 * (r_lowbound - r_nextstep_lowbound); // 粒子在两个 snapshot 之间极限 travel 距离；
     }
 
-	if(param.lightcone_zmax>0.0 && myrank==0){ 
+	if(param.use_lightcone && myrank==0){
 	  printf(" (write_lightcone) istep = %d || a in (%5.3f %5.3f), z in (%5.3f %5.3f), r in (%10.3f %10.3f)\n", istep, a1,a2, z2,z1, r2,r1);
   	  printf("                   amid, zmid, rmid = %lf, %lf, %lf\n", amid, zmid, rmid);
 	}
@@ -412,9 +413,9 @@ int main(int argc, char* argv[])
 	// filename
     char filename[3000]; 
     char filename2[3000]; 
-    char filename_test[3000]; 
+    char filename_test[3000];
 
-    if (param.lightcone_zmax>0.0)
+    if (param.use_lightcone)
     {
         sprintf(filename, "%s_lightcone.istep%d_thread%d",param.lightcone_basename,istep, myrank);
         sprintf(filename2, "%s_lightcone.istep%d_thread%d.npar",param.lightcone_basename,istep, myrank);
@@ -422,7 +423,7 @@ int main(int argc, char* argv[])
     }
 
 	// check whether we need to output lightcone
-	if( (param.lightcone_zmax<=0.0) || ( z3>zmax || istep == 1)){}
+	if( (!param.use_lightcone) || ( z3>zmax || istep == 1)){}
 	else{
 	  if(myrank==0){
 	    if(is_first_lightcone_shell) printf("                   The first lightcone-shell start to output!!! (zmax=%.3f, rmax=%.3f)\n",zmax,rmax);
@@ -569,7 +570,7 @@ int main(int argc, char* argv[])
     } // istep 323
     } // nout 320
 
-    if (param.lightcone_zmax > 0.0)
+    if (param.use_lightcone)
     {
     printf("                   (myrank=%d)    # written-to-file =   %lld      skip=%lld, %.3f%%; output=%lld, %.3f%%  \n",
 	    myrank, n_write_total, n_check_cross_skip_total, n_check_cross_skip_total / (double)n_write_total * 100, 

@@ -118,9 +118,17 @@ void confirm_parameters(Parameters* const param, const char filename[])
       msg_printf(normal, "write_longid= %d\n", param->write_longid);
   }
 
- msg_printf(normal, "lightcone_zmax = %.3f\n", param->lightcone_zmax);
- if(param->lightcone_zmax<=1e-6){
-      msg_printf(warn, "This is for lightcone: need a positive zmax. You set lightcone_zmax=%.3f, so the function of lightcone will be disabled\n ", param->lightcone_zmax); }
+  // Lightcone parameters
+  if (param->use_lightcone)
+  {
+    msg_printf(normal, "use_lightcone = 1 (enabled)\n");
+    msg_printf(normal, "lightcone_zmax = %.3f\n", param->lightcone_zmax);
+    msg_printf(normal, "lightcone_basename = \"%s\"\n", param->lightcone_basename);
+  }
+  else
+  {
+    msg_printf(normal, "use_lightcone = 0 (disabled)\n");
+  }
 
   msg_printf(normal, "de_w = %lg\n", param-> de_w);
   msg_printf(normal, "omega_l= %lg\n", param->omega_l);

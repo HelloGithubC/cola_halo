@@ -47,7 +47,16 @@ int read_parameters(const int argc, char * argv[],
   bcast_string(&param->subsample_filename,  &param->strlen_subsample_filename);
   bcast_string(&param->cgrid_filename,      &param->strlen_cgrid_filename);
   bcast_string(&param->init_filename,       &param->strlen_init_filename);
-  bcast_string(&param->lightcone_basename,  &param->strlen_lightcone_basename);
+  if (param->use_lightcone)
+  {
+    bcast_string(&param->lightcone_basename,  &param->strlen_lightcone_basename);
+  }
+  else
+  {
+    // Ensure lightcone_basename is NULL when not used
+    param->lightcone_basename = 0;
+    param->strlen_lightcone_basename = 0;
+  }
 
   bcast_array_double(&param->zout,          &param->n_zout);
 
@@ -241,16 +250,18 @@ int read_parameter_file(const char filename[], Parameters* const param)
 
   // Optional parameters added by xiaodong
   param->only_output_1eighth = read_int(L, "only_output_1eighth", false, 0);
-  param->lightcone_zmax = read_double(L, "lightcone_zmax", false, 0.0);
-  param->lightcone_basename = read_string2(L, "lightcone_basename",
-                                           &param->strlen_lightcone_basename, false);
-  // Set default if lightcone_basename is not provided
-  if (!param->lightcone_basename) {
-    const char* default_basename = "default.lightcone";
-    param->strlen_lightcone_basename = strlen(default_basename) + 1;
-    param->lightcone_basename = malloc(sizeof(char) * param->strlen_lightcone_basename);
-    assert(param->lightcone_basename);
-    strcpy(param->lightcone_basename, default_basename);
+  param->use_lightcone = read_bool(L, "use_lightcone", false);
+  if (param->use_lightcone)
+  {
+    param->lightcone_zmax = read_double(L, "lightcone_zmax", true, 0.0);
+    param->lightcone_basename = read_string2(L, "lightcone_basename",
+                                             &param->strlen_lightcone_basename, true);
+  }
+  else
+  {
+    param->lightcone_zmax = 0.0;
+    param->lightcone_basename = 0;
+    param->strlen_lightcone_basename = 0;
   }
 
   // Handle de_w with special de_w_add10 parameter (de_w = de_w_add10 - 10)

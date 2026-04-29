@@ -48,7 +48,8 @@ typedef struct {
 
   int write_longid; 
 
-  // xiaodong: variables for lightcone 
+  // xiaodong: variables for lightcone
+  int use_lightcone;  // boolean flag: 1 to enable lightcone, 0 to disable (default)
   double lightcone_zmax;
   char* lightcone_basename;  int strlen_lightcone_basename;
   int use_solve_growth;
