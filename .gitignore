@@ -15,6 +15,7 @@ cola_halo
 *.swp
 *.swo
 *~
+.clangd
 
 # OS generated files
 .DS_Store

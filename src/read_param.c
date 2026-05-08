@@ -395,6 +395,15 @@ int read_parameter_file(const char filename[], Parameters *const param)
 
     printf("Get de_w = %lg\n", param->de_w);
     printf("Get only_output_1eighth = %d\n", param->only_output_1eighth);
+
+    // Force use_solve_growth for non-LCDM models (de_w != -1)
+    if (param->de_w != -1.0)
+    {
+        param->use_solve_growth = 1;
+        printf("INFO: de_w = %lg (non-LCDM model detected).\n", param->de_w);
+        printf("INFO: Automatically enabling use_solve_growth for accurate growth factor calculation.\n");
+    }
+
     if (param->only_output_1eighth)
     {
         printf("WARNING (read_parameter_file) Will only output 1/8 of the full sky!!!\n");

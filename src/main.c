@@ -493,7 +493,7 @@ int main(int argc, char* argv[])
 						x3_shift_pre=p_precheck->xyzvs[nowi_pre][2]+param.boxsize*ishift3;  
 						r_pre = sqrt(x1_shift_pre*x1_shift_pre + x2_shift_pre*x2_shift_pre + x3_shift_pre*x3_shift_pre);
 						r_now = r;
-						if(r_pre >r_upbound && r_now < r_upbound && abs(r_pre - r_now)<max_travel_distance*2){
+						if(r_pre >r_upbound && r_now < r_upbound && fabs(r_pre - r_now)<max_travel_distance*2){
 							check_cross_skip = 0; // 上一个输出过了，这一个就不要输出了 
 							n_check_cross_skip ++;
 							if(myrank==0){
@@ -501,7 +501,7 @@ int main(int argc, char* argv[])
 							    snapshot->p[ipar].id, x1_shift_pre,x2_shift_pre,x3_shift_pre, 
 							    x1_shift,x2_shift,x3_shift, r_pre,r_now,r_upbound);}
 						}
-						else if(r_pre<r_upbound && r_now > r_upbound && abs(r_pre - r_now)<max_travel_distance*2){
+						else if(r_pre<r_upbound && r_now > r_upbound && fabs(r_pre - r_now)<max_travel_distance*2){
 							check_cross_output = 1; // 上一个没有输出过，这一个也不会输出 -- 要补回来
 							n_check_cross_output ++;
 							if(myrank==0){
@@ -730,7 +730,7 @@ void snapshot_time(const float aout, const int iout,
 
   char filebase[6000];
   const int isnp= iout+1;
-  char suffix= 'a' + iout;
+  // char suffix= 'a' + iout;
 
   // If you prefer other output filename format (not a,b,c, for example
   // Change the sprintf statements below
